@@ -43,7 +43,7 @@ def build_db(plex_dir, movies, extra_columns):
         title = filter(lambda x: x not in del_chars, row[1])
         year = row[2].split('-')[0]
         columns_for_mapping = row[3:]
-        mapping = (title, year, [], row[3])
+        mapping = (title, year, [])
         for i in columns_for_mapping:  
             mapping=mapping+(i,)
         movies[row[0]] = mapping
@@ -103,7 +103,6 @@ def copy_rename(mapping, dest):
                 os.makedirs(dp)
 
             if not os.path.exists(fp):
-                print "copying %s" % fp
                 shutil.copy(old_name, fp)
 
         except Exception, e:

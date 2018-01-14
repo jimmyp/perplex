@@ -1,5 +1,7 @@
 #!/bin/bash
 
-~/dev/perplex/perplex.py --save ~/movies.db --plex ~/Library/Application\ Support/Plex\ Media\ Server/Plug-in\ SuppDatabases/ --prependtomapping studio
+pip install lxml --user $(cat requirements.txt)
 
-./perplex.py --load ~/movies.db --dest ~/exported_plex/ -prependtomapping studio
+./perplex.py --save ~/movies.db --plex ~/Library/Application\ Support/Plex\ Media\ Server/Plug-in\ Support/Databases/ --prependtomapping studio
+
+./perplex.py --load ~/movies.db --dest ~/exported_plex/ --prependtomapping studio
