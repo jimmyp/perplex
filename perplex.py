@@ -39,13 +39,10 @@ def build_db(plex_dir, movies, extra_columns):
         SELECT id, title, originally_available_at %s FROM metadata_items
         WHERE metadata_type = 1 AND originally_available_at """ % extra_where
 
-    print "query is %s" % query
-
     for row in db.execute(query):
         title = filter(lambda x: x not in del_chars, row[1])
         year = row[2].split('-')[0]
         columns_for_mapping = row[3:]
-        print "columns_for_mapping %s" % (columns_for_mapping,)
         mapping = (title, year, [], row[3])
         for i in columns_for_mapping:  
             mapping=mapping+(i,)
