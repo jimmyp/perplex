@@ -26,7 +26,7 @@ def find_db(plex_dir, name):
 
     return None
 
-def build_db(plex_dir, movies, extra_columns):
+def build_db(plex_dir, movies={}):
     """ Build movie database from sqlite database """
 
     print "Analyzing Plex database ",
@@ -34,22 +34,14 @@ def build_db(plex_dir, movies, extra_columns):
     db = sqlite3.connect(dbfile)
 
     # Select only movies with year
-    extra_where = "" if len(extra_columns) < 1 else  "," +  ",".join(extra_columns)
     query = """
-        SELECT id, title, originally_available_at %s FROM metadata_items
-        WHERE metadata_type = 1 AND originally_available_at """ % extra_where
-
-    print "query is %s" % query
+        SELECT id, title, originally_available_at, studio FROM metadata_items
+        WHERE metadata_type = 1 AND originally_available_at """
 
     for row in db.execute(query):
         title = filter(lambda x: x not in del_chars, row[1])
         year = row[2].split('-')[0]
-        columns_for_mapping = row[3:]
-        print "columns_for_mapping %s" % (columns_for_mapping,)
-        mapping = (title, year, [], row[3])
-        for i in columns_for_mapping:  
-            mapping=mapping+(i,)
-        movies[row[0]] = mapping
+        movies[row[0]] = (title, year, [], row[3])
 
     # Get files for each movie
     query = """
@@ -67,22 +59,18 @@ def build_db(plex_dir, movies, extra_columns):
 
     return movies
 
-def build_map(movies, dest, mapping, altmapping):
+
+def build_map(movies, dest, mapping=[]):
     """ Build mapping to new names """
 
-    remapped_movies = map(lambda (k, v): (k, v[0:3], value), [(key, value) for key in movies.keys() for value in movies.values()])
-    
-    for key, standard_value, value in remapped_movies:
-        title, year, files = standard_value
+    for title, year, files, studio in movies.values():
         for i, old_name in enumerate(files):
             _, ext = os.path.splitext(old_name)
 
-            template = "%s (%s)/%s (%s)" % (title, year, title, year)
-            for index in reversed(range(0, len(altmapping))):
-                prepend_value = str(value[3+index])
-                template = prepend_value + "/" + template 
+            template = "%s/%s (%s)/%s (%s)" % (studio, title, year, title, year)
             template += " - part%d" % (i + 1) if len(files) > 1 else ""
             template += ext
+
             dest = os.path.normpath(dest)
             new_name = os.path.join(dest, *template.split("/"))
             mapping.append((old_name, new_name))
@@ -106,7 +94,6 @@ def copy_rename(mapping, dest):
                 os.makedirs(dp)
 
             if not os.path.exists(fp):
-                print "copying %s" % fp
                 shutil.copy(old_name, fp)
 
         except Exception, e:
@@ -124,17 +111,11 @@ if __name__ == "__main__":
                         help='save database of movie titles and files')
     parser.add_argument('--load', metavar='<file>', type=str,
                         help='load database of movie titles and files')
-    parser.add_argument('--prependtomapping', metavar='<string>', type=str,
-                        help='specify columns to prepend to /title (year)/title (year)/, example "--prependtomapping country,tagline" gives country/tagline/title (year)/title (year)/')
 
     args = parser.parse_args()
-    altmapping = [];
-    if args.prependtomapping:
-        altmapping = map(lambda x: x.strip(), args.prependtomapping.split(","))
-        print "altmapping is %s" % (altmapping,) 
 
     if args.plex:
-        movies = build_db(args.plex, {}, altmapping)
+        movies = build_db(args.plex)
     elif args.load:
         print "Loading metadata from " + args.load
         movies = json.load(gzip.open(args.load))
@@ -149,7 +130,7 @@ if __name__ == "__main__":
 
     if args.dest:
         print "Building file mapping for " + args.dest
-        mapping = build_map(movies, args.dest , [], altmapping)
+        mapping = build_map(movies, args.dest)
 
         print "Copying renamed files to " + args.dest
         copy_rename(mapping, args.dest)
