@@ -35,9 +35,11 @@ def build_db(plex_dir, movies, extra_columns):
 
     # Select only movies with year
     extra_where = "" if len(extra_columns) < 1 else  "," +  ",".join(extra_columns)
+    print "extra where is: %s" % extra_where
+
     query = """
         SELECT id, title, originally_available_at %s FROM metadata_items
-        WHERE metadata_type = 1 AND originally_available_at """ % extra_where
+        WHERE metadata_type = 1 AND originally_available_at""" % extra_where
 
     for row in db.execute(query):
         title = filter(lambda x: x not in del_chars, row[1])
@@ -47,6 +49,7 @@ def build_db(plex_dir, movies, extra_columns):
         for i in columns_for_mapping:  
             mapping=mapping+(i,)
         movies[row[0]] = mapping
+        #DEBUG print "mapping for metadata title %s is %s" % (title, mapping)
 
     # Get files for each movie
     query = """
@@ -67,9 +70,15 @@ def build_db(plex_dir, movies, extra_columns):
 def build_map(movies, dest, mapping, altmapping):
     """ Build mapping to new names """
 
-    remapped_movies = map(lambda (k, v): (k, v[0:3], value), [(key, value) for key in movies.keys() for value in movies.values()])
+    remapped_movies = map(lambda (k, v): (k, v[0:3], v), [(key, value) for key in movies.keys() for value in movies.values()])
     
     for key, standard_value, value in remapped_movies:
+        #DEBUG print "map is:"
+        #DEBUG print "     key: %s" % key
+        #DEBUG print "     standard_value: %s" % standard_value
+        #DEBUG print "     value: %s" % value
+        #DEBUG print "***********************"
+
         title, year, files = standard_value
         for i, old_name in enumerate(files):
             _, ext = os.path.splitext(old_name)
@@ -103,6 +112,7 @@ def copy_rename(mapping, dest):
                 os.makedirs(dp)
 
             if not os.path.exists(fp):
+                #DEBUG print "copying %s to %s" % (dp, fp)
                 shutil.copy(old_name, fp)
 
         except Exception, e:
@@ -124,10 +134,10 @@ if __name__ == "__main__":
                         help='specify columns to prepend to /title (year)/title (year)/, example "--prependtomapping country,tagline" gives country/tagline/title (year)/title (year)/')
 
     args = parser.parse_args()
+
     altmapping = [];
     if args.prependtomapping:
         altmapping = map(lambda x: x.strip(), args.prependtomapping.split(","))
-        print "altmapping is %s" % (altmapping,) 
 
     if args.plex:
         movies = build_db(args.plex, {}, altmapping)
